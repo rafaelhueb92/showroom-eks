@@ -51,14 +51,10 @@ jobs:
         uses: hashicorp/setup-terraform@v1
         with:
           terraform_version: 1.4.0
-      
-      - name: Install yq
-        run: |
-          sudo apt-get install -y yq
 
       - name: Read destroy.yaml and run terraform destroy if destroy=true
         run: |
-          DESTROY=$(yq e '.destroy' destroy.yaml)  # Using yq to parse YAML files
+          DESTROY=$(grep 'destroy:' destroy.yaml | awk '{print $2}')
 
           if [[ "$DESTROY" == "true" ]]; then
             echo "Destroying infrastructure as destroy=true in destroy.yaml"
