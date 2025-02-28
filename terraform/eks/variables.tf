@@ -15,6 +15,10 @@ variable "eks_role_arn" {
   description = "The role arn of the eks"
 }
 
+variable "ec2_role_arn" {
+  description = "The role arn of the ec2 instances node"
+}
+
 variable "project_name" {
   description = "The name of the application"
 }

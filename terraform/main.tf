@@ -33,6 +33,7 @@ module "eks" {
   subnet_ids = module.vpc.subnet_ids
   security_group_id = module.vpc.security_groups
   eks_role_arn = module.iam.eks_role_arn
+  ec2_role_arn = module.iam.ec2_role_arn
 
   depends_on = [
     module.vpc,module.iam
