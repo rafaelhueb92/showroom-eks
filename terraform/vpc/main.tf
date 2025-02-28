@@ -124,7 +124,6 @@ resource "aws_subnet" "public_subnet_01" {
 
   tags = {
     Name         = "${var.project_name}-PublicSubnet01"
-    "kubernetes.io/role/elb" = 1
     created_by_me = "TRUE"
   }
 }
@@ -137,7 +136,6 @@ resource "aws_subnet" "public_subnet_02" {
 
   tags = {
     Name         = "${var.project_name}-PublicSubnet02"
-    "kubernetes.io/role/elb" = 1
     created_by_me = "TRUE"
   }
 }
@@ -149,7 +147,6 @@ resource "aws_subnet" "private_subnet_01" {
 
   tags = {
     Name         = "${var.project_name}-PrivateSubnet01"
-    "kubernetes.io/role/internal-elb" = 1
     created_by_me = "TRUE"
   }
 }
@@ -161,7 +158,6 @@ resource "aws_subnet" "private_subnet_02" {
 
   tags = {
     Name         = "${var.project_name}-PrivateSubnet02"
-    "kubernetes.io/role/internal-elb" = 1
     created_by_me = "TRUE"
   }
 }
@@ -190,34 +186,6 @@ resource "aws_security_group" "control_plane_security_group" {
   description = "Cluster communication with worker nodes"
   vpc_id      = aws_vpc.vpc.id
 
-  tags = {
-    created_by_me = "TRUE"
-  }
-}
-
-# Save outputs to Parameter Store
-resource "aws_ssm_parameter" "vpc_id" {
-  name  = "/vpc/id"
-  type  = "String"
-  value = aws_vpc.vpc.id
-  tags = {
-    created_by_me = "TRUE"
-  }
-}
-
-resource "aws_ssm_parameter" "subnet_ids" {
-  name  = "/vpc/subnet_ids"
-  type  = "String"
-  value = join(",", [aws_subnet.public_subnet_01.id, aws_subnet.public_subnet_02.id, aws_subnet.private_subnet_01.id, aws_subnet.private_subnet_02.id])
-  tags = {
-    created_by_me = "TRUE"
-  }
-}
-
-resource "aws_ssm_parameter" "security_group_id" {
-  name  = "/vpc/security_group_id"
-  type  = "String"
-  value = aws_security_group.control_plane_security_group.id
   tags = {
     created_by_me = "TRUE"
   }
