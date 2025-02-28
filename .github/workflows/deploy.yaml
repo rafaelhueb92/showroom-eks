@@ -1,59 +1,81 @@
-name: Deploy Infrastructure
+name: Deploy to AWS
 
 on:
   push:
     branches:
       - main
 
+env:
+  ACTIONS_STEP_DEBUG: true
+  AWS_DEBUG: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
-
-      # Step 1: Set up AWS CLI
-      - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      # Step 2: Check if destroy is true
-      - name: Check if destroy is true
-        id: check_destroy
+        uses: actions/checkout@v3
+      
+      - name: Set environment variables
         run: |
-          DESTROY=$(yq e '.destroy' terraform/destroy.yaml)
-          if [ "$DESTROY" == "true" ]; then
-            echo "Destroy is true. Proceeding with Terraform Destroy."
-            terraform -chdir=terraform destroy -auto-approve || true
+          echo "REPO_NAME=${{ github.repository }}" >> $GITHUB_ENV
+          echo "ROLE_NAME=GitHubActionsRole" >> $GITHUB_ENV
+          echo "ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}" >> $GITHUB_ENV
+
+      - name: Concatenate environment variables to create IAM Role ARN
+        run: |
+          ARN="arn:aws:iam::$ACCOUNT_ID:role/$ROLE_NAME-${REPO_NAME#*/}"
+          echo "The IAM Role ARN is: $ARN"
+          echo "ROLE_ARN=$ARN" >> $GITHUB_ENV
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_ARN }}
+          aws-region: us-east-1 
+      
+      - name: Clear AWS Credentials Cache
+        run: rm -rf ~/.aws/cli/cache
+      
+      - name: Configure backend.hcl file
+        run: bash backend-create.sh
+        working-directory: ./terraform
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.4.0
+      
+      - name: Install yq
+        run: |
+          sudo apt-get install -y yq
+
+      - name: Read destroy.yaml and run terraform destroy if destroy=true
+        run: |
+          DESTROY=$(yq e '.destroy' destroy.yaml)  # Using yq to parse YAML files
+
+          if [[ "$DESTROY" == "true" ]]; then
+            echo "Destroying infrastructure as destroy=true in destroy.yaml"
+            terraform destroy -auto-approve ./path-to-your-terraform-directory
+            exit 0 
           else
-            echo "Destroy is false. Proceeding with Terraform Apply."
+            echo "Proceeding with apply since destroy=false or not set"
           fi
 
-      - name: Create Backend
-        run: terraform -chdir=terraform/ backend-create.sh
-      
       - name: Terraform Init
-        run: terraform -chdir=terraform init
+        run: terraform init
+        working-directory: ./terraform
 
       - name: Terraform Apply
-        if: steps.check_destroy.outputs.destroy != 'true'
-        run: terraform -chdir=terraform apply -auto-approve
+        run: terraform apply -auto-approve
+        working-directory: ./terraform
 
-      # Step 6: Install Prometheus and ArgoCD on EKS Cluster
-      - name: Install Prometheus
+      - name: Terraform Destroy if Apply fails
+        if: failure()  
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/master/bundle.yaml
-          kubectl apply -f https://raw.githubusercontent.com/prometheus/prometheus/main/documentation/examples/prometheus.yaml
-
-      - name: Install ArgoCD
-        run: |
-          kubectl create namespace argocd
-          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
-      # Step 7: Destroy Terraform resources if any step fails
-      - name: Terraform Destroy on Failure
-        if: failure()
-        run: terraform -chdir=terraform destroy -auto-approve
+          echo "Applying failed. Running terraform destroy..."
+          terraform destroy -auto-approve
+        working-directory: ./terraform

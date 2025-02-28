@@ -1,3 +1,5 @@
 backend.hcl
 trust-policy.json
 .terraform
+ci-permisions
+permission-policy.json
