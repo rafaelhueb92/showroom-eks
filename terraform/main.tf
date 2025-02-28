@@ -24,6 +24,11 @@ module "iam" {
   project_name = var.project_name
 }
 
+module "secret" { 
+  source = "./secret"
+  project_name = = var.project_name
+}
+
 module "eks" {
 
   source = "./eks"
@@ -39,27 +44,14 @@ module "eks" {
 
 }
 
-module "eks_service" { 
+module "eks_setup" {
+  source = "./install-eks"
 
-  source = "./service"
-
-  project_name = var.project_name
-  eks_name = module.eks.eks_cluster_name
+  cluster_name = module.eks.eks_cluster_name
+  project_name = = var.project_name
 
   depends_on = [
-    module.vpc,module.iam, module.eks
+    module.vpc,
   ]
 
 }
-
-module "alb" { 
-
-  source = "./alb"
-
-  project_name = var.project_name
-  subnet_ids = module.vpc.subnet_ids
-  vpc_id = module.vpc.vpc_id
-  eks_service_dns = module.eks_service.eks_service_dns
-
-}
-
