@@ -20,11 +20,6 @@ module "iam" {
   project_name = var.project_name
 }
 
-module "secret" { 
-  source = "./secret"
-  project_name = var.project_name
-}
-
 module "ssh_key" { 
   source = "./ssh_key"
    project_name = var.project_name
