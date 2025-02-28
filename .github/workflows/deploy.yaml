@@ -22,16 +22,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       
-      - name: Install AWS CLI & kubectl
-        run: |
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install
-          aws --version
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
-      
       - name: Set environment variables
         run: |
           echo "REPO_NAME=${{ github.repository }}" >> $GITHUB_ENV
@@ -93,6 +83,12 @@ jobs:
           CLUSTER_NAME=$(terraform output -raw eks_cluster_name)
           echo "EKS_CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
         working-directory: ./terraform
+      
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
       
       - name: Update Kubeconfig
         run: aws eks update-kubeconfig --region us-east-1 --name $EKS_CLUSTER_NAME
