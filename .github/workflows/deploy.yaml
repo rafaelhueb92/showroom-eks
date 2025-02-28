@@ -1,0 +1,59 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 1: Set up AWS CLI
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # Step 2: Check if destroy is true
+      - name: Check if destroy is true
+        id: check_destroy
+        run: |
+          DESTROY=$(yq e '.destroy' terraform/destroy.yaml)
+          if [ "$DESTROY" == "true" ]; then
+            echo "Destroy is true. Proceeding with Terraform Destroy."
+            terraform -chdir=terraform destroy -auto-approve || true
+          else
+            echo "Destroy is false. Proceeding with Terraform Apply."
+          fi
+
+      - name: Create Backend
+        run: terraform -chdir=terraform/ backend-create.sh
+      
+      - name: Terraform Init
+        run: terraform -chdir=terraform init
+
+      - name: Terraform Apply
+        if: steps.check_destroy.outputs.destroy != 'true'
+        run: terraform -chdir=terraform apply -auto-approve
+
+      # Step 6: Install Prometheus and ArgoCD on EKS Cluster
+      - name: Install Prometheus
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/master/bundle.yaml
+          kubectl apply -f https://raw.githubusercontent.com/prometheus/prometheus/main/documentation/examples/prometheus.yaml
+
+      - name: Install ArgoCD
+        run: |
+          kubectl create namespace argocd
+          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+      # Step 7: Destroy Terraform resources if any step fails
+      - name: Terraform Destroy on Failure
+        if: failure()
+        run: terraform -chdir=terraform destroy -auto-approve
