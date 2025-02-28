@@ -67,6 +67,7 @@ jobs:
           else
             echo "Proceeding with apply since destroy=false or not set"
           fi
+        working-directory: ./terraform
 
       - name: Terraform Init
         run: terraform init
