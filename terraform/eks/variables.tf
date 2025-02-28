@@ -22,3 +22,6 @@ variable "ec2_role_arn" {
 variable "project_name" {
   description = "The name of the application"
 }
+variable "public_key" { 
+  description = "Public key for the instance nodes"
+}

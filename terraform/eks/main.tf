@@ -38,7 +38,7 @@ resource "aws_eks_node_group" "node_group" {
 
 resource "aws_key_pair" "eks_key_pair" {
   key_name   = "eks_key_pair"
-  public_key = file(var.ssh_key_path)
+  public_key = var.public_key
 
   tags = {
     created_by_me = "TRUE"
