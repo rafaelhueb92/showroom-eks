@@ -1,0 +1,13 @@
+grafana:
+  enabled: true
+  adminPassword: "admin"  # Set your Grafana admin password
+  ingress:
+    enabled: true
+    hosts:
+      - grafana.yourdomain.com  # Replace with your domain if using ingress
+    path: /
+
+prometheus:
+  enabled: true
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
