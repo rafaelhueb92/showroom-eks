@@ -10,10 +10,6 @@ provider "aws" {
   }
 }
 
-terraform {
-  backend "s3" {}
-}
-
 module "vpc" { 
   source = "./vpc"
   project_name = var.project_name
@@ -26,7 +22,7 @@ module "iam" {
 
 module "secret" { 
   source = "./secret"
-  project_name = = var.project_name
+  project_name = var.project_name
 }
 
 module "eks" {
@@ -40,18 +36,6 @@ module "eks" {
 
   depends_on = [
     module.vpc,module.iam
-  ]
-
-}
-
-module "eks_setup" {
-  source = "./install-eks"
-
-  cluster_name = module.eks.eks_cluster_name
-  project_name = = var.project_name
-
-  depends_on = [
-    module.vpc,
   ]
 
 }
