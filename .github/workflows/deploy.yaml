@@ -85,7 +85,7 @@ jobs:
           cluster_name: ${{ secrets.CLUSTER_NAME }}
 
       - name: Install Helm
-        uses: deliverybot/helm@v1
+        uses: azure/setup-helm@v1
         with:
           version: 'v3.10.0'
 
