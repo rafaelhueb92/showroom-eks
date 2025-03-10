@@ -80,12 +80,12 @@ jobs:
         working-directory: ./terraform
 
       - name: Set up kubectl context for EKS
-        uses: ianbelcher/eks-kubectl-action@v1
+        uses: ianbelcher/eks-kubectl-action@master
         with:
           cluster_name: ${{ secrets.CLUSTER_NAME }}
 
       - name: Install Helm
-        uses: helm/helm-action@v1
+        uses: deliverybot/helm@v1
         with:
           version: 'v3.10.0'
 
