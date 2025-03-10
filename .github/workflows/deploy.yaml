@@ -31,7 +31,6 @@ jobs:
       - name: Concatenate environment variables to create IAM Role ARN
         run: |
           ARN="arn:aws:iam::$ACCOUNT_ID:role/$ROLE_NAME-${REPO_NAME#*/}"
-          echo "The IAM Role ARN is: $ARN"
           echo "ROLE_ARN=$ARN" >> $GITHUB_ENV
       
       - name: Configure AWS credentials
@@ -74,26 +73,35 @@ jobs:
         working-directory: ./terraform
 
       - name: Retrieve EKS Cluster Name from Terraform
-        id: get-cluster-name
         run: |
           CLUSTER_NAME=$(terraform output -raw eks_cluster_name)
+          echo "Terraform output: $CLUSTER_NAME"
           echo "EKS_CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
         working-directory: ./terraform
-      
-      - name: Install kubectl
-        run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
-      
-      - name: Update Kubeconfig
-        run: aws eks update-kubeconfig --region us-east-1 --name $EKS_CLUSTER_NAME
 
-      - name: Deploy ArgoCD
-        run: |
-          kubectl create namespace argocd || true
-          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+      - name: Set up kubectl context for EKS
+        uses: ianbelcher/eks-kubectl-action@v1
+        with:
+          cluster_name: ${{ secrets.CLUSTER_NAME }}
 
+      - name: Install Helm
+        uses: helm/helm-action@v1
+        with:
+          version: 'v3.10.0'
+
+      - name: Add Helm repositories
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+
+      - name: Install ArgoCD using Helm
+        run: |
+          helm upgrade --install argocd bitnami/argo-cd --namespace argocd --create-namespace
+
+      - name: Run Helm test
+        run: |
+          helm test argocd --namespace argocd
+      
       - name: Terraform Destroy if Apply fails
         if: failure()  
         run: |
