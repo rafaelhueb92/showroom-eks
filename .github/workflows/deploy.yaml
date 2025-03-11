@@ -81,6 +81,11 @@ jobs:
           echo "EKS_CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
         working-directory: ./terraform
 
+      - name: Debug Environment Variables
+        run: |
+           echo "EKS_CLUSTER_NAME: ${{ env.EKS_CLUSTER_NAME }}"
+           echo "AWS_REGION: ${{ env.AWS_REGION }}"
+
       - name: Update kube config
         run: |
             echo "Cluster Name: ${{ env.CLUSTER_NAME }}"
