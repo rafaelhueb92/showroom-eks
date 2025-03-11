@@ -52,6 +52,10 @@ jobs:
         with:
           terraform_version: 1.4.0
           terraform_wrapper: false
+      
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform
 
       - name: Read destroy.yaml and run terraform destroy if destroy=true
         run: |
@@ -64,10 +68,6 @@ jobs:
           else
             echo "Proceeding with apply since destroy=false or not set"
           fi
-        working-directory: ./terraform
-
-      - name: Terraform Init
-        run: terraform init
         working-directory: ./terraform
 
       - name: Terraform Plan
