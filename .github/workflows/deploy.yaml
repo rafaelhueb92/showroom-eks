@@ -70,26 +70,26 @@ jobs:
         run: terraform init
         working-directory: ./terraform
 
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+        working-directory: ./terraform
+
+      - name: Show Plan (Optional)
+        run: terraform show tfplan
+        working-directory: ./terraform
+
       - name: Terraform Apply
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve tfplan
         working-directory: ./terraform
 
       - name: Retrieve EKS Cluster Name from Terraform
         run: |
           CLUSTER_NAME=$(terraform output -raw eks_cluster_name)
-          echo "Terraform output: $CLUSTER_NAME"
           echo "EKS_CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
         working-directory: ./terraform
 
-      - name: Debug Environment Variables
-        run: |
-           echo "EKS_CLUSTER_NAME: ${{ env.EKS_CLUSTER_NAME }}"
-           echo "AWS_REGION: ${{ env.AWS_REGION }}"
-
       - name: Update kube config
-        run: |
-            echo "Cluster Name: ${{ env.CLUSTER_NAME }}"
-            aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region $AWS_REGION
+        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region $AWS_REGION
 
       - name: Add Helm repositories
         uses: WyriHaximus/github-action-helm3@v3
