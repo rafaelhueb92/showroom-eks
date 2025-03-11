@@ -11,6 +11,7 @@ on:
 env:
   ACTIONS_STEP_DEBUG: true
   AWS_DEBUG: true
+  AWS_REGION: us-east-1
 
 jobs:
   deploy:
@@ -80,29 +81,23 @@ jobs:
           echo "EKS_CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
         working-directory: ./terraform
 
-      - name: Set up kubectl context for EKS
-        uses: ianbelcher/eks-kubectl-action@master
-        with:
-          cluster_name: ${{ env.CLUSTER_NAME }}
-
-      - name: Install Helm
-        uses: azure/setup-helm@v1
-        with:
-          version: 'v3.10.0'
+      - name: Update kube config
+        run: aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region $AWS_REGION
 
       - name: Add Helm repositories
-        run: |
-          helm repo add bitnami https://charts.bitnami.com/bitnami
-          helm repo update
+        uses: WyriHaximus/github-action-helm3@v3
+        with:
+          exec: | 
+            helm repo add bitnami https://charts.bitnami.com/bitnami
+            helm repo update
 
-      - name: Install ArgoCD using Helm
-        run: |
-          helm upgrade --install argocd bitnami/argo-cd --namespace argocd --create-namespace
+      - name: Install ArgoCD using Helm and Run Helm test
+        uses: WyriHaximus/github-action-helm3@v3
+        with:
+          exec: | 
+            helm upgrade --install argocd bitnami/argo-cd --namespace argocd --create-namespace
+            helm test argocd --namespace argocd
 
-      - name: Run Helm test
-        run: |
-          helm test argocd --namespace argocd
-      
       - name: Terraform Destroy if Apply fails
         if: failure()  
         run: |
