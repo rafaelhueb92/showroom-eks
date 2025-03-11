@@ -54,7 +54,7 @@ jobs:
           terraform_wrapper: false
       
       - name: Terraform Init
-        run: terraform init
+        run: terraform init -backend-config=./backend.hcl
         working-directory: ./terraform
 
       - name: Read destroy.yaml and run terraform destroy if destroy=true
@@ -63,8 +63,7 @@ jobs:
 
           if [[ "$DESTROY" == "true" ]]; then
             echo "Destroying infrastructure as destroy=true in destroy.yaml"
-            terraform destroy -auto-approve
-            exit 0 
+            exit 1
           else
             echo "Proceeding with apply since destroy=false or not set"
           fi
@@ -110,4 +109,5 @@ jobs:
         run: |
           echo "Applying failed. Running terraform destroy..."
           terraform destroy -auto-approve
+          exit 0
         working-directory: ./terraform
