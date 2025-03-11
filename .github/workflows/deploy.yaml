@@ -50,6 +50,7 @@ jobs:
         uses: hashicorp/setup-terraform@v1
         with:
           terraform_version: 1.4.0
+          terraform_wrapper: false
 
       - name: Read destroy.yaml and run terraform destroy if destroy=true
         run: |
@@ -82,7 +83,7 @@ jobs:
       - name: Set up kubectl context for EKS
         uses: ianbelcher/eks-kubectl-action@master
         with:
-          cluster_name: ${{ secrets.CLUSTER_NAME }}
+          cluster_name: ${{ env.CLUSTER_NAME }}
 
       - name: Install Helm
         uses: azure/setup-helm@v1
