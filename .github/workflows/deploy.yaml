@@ -82,7 +82,9 @@ jobs:
         working-directory: ./terraform
 
       - name: Update kube config
-        run: aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region $AWS_REGION
+        run: |
+            echo "Cluster Name: ${{ env.CLUSTER_NAME }}"
+            aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region $AWS_REGION
 
       - name: Add Helm repositories
         uses: WyriHaximus/github-action-helm3@v3
