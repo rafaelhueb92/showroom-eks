@@ -59,7 +59,7 @@ jobs:
 
           if [[ "$DESTROY" == "true" ]]; then
             echo "Destroying infrastructure as destroy=true in destroy.yaml"
-            terraform destroy -auto-approve ./path-to-your-terraform-directory
+            terraform destroy -auto-approve ./terraform
             exit 0 
           else
             echo "Proceeding with apply since destroy=false or not set"
