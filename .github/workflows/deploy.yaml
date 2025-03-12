@@ -14,8 +14,68 @@ env:
   AWS_REGION: us-east-1
 
 jobs:
+
+  destroy:
+    runs-on: ubuntu-latest
+    outputs:
+      destroy_triggered: ${{ steps.check_destroy.outputs.destroy_triggered }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set environment variables
+        run: |
+          echo "REPO_NAME=${{ github.repository }}" >> $GITHUB_ENV
+          echo "ROLE_NAME=GitHubActionsRole" >> $GITHUB_ENV
+          echo "ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}" >> $GITHUB_ENV
+
+      - name: Concatenate environment variables to create IAM Role ARN
+        run: |
+          ARN="arn:aws:iam::$ACCOUNT_ID:role/$ROLE_NAME-${REPO_NAME#*/}"
+          echo "ROLE_ARN=$ARN" >> $GITHUB_ENV
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_ARN }}
+          aws-region: us-east-1 
+      
+      - name: Clear AWS Credentials Cache
+        run: rm -rf ~/.aws/cli/cache
+      
+      - name: Configure backend.hcl file
+        run: bash backend-create.sh
+        working-directory: ./terraform
+
+      - name: Read destroy.yaml and check if destroy=true
+        id: check_destroy
+        run: |
+          DESTROY=$(grep 'destroy:' destroy.yaml | awk '{print $2}')
+          if [[ "$DESTROY" == "true" ]]; then
+            echo "Destroy triggered"
+            echo "destroy_triggered=true" >> $GITHUB_ENV
+            echo "destroy_triggered=true" >> $GITHUB_OUTPUT
+          else
+            echo "destroy_triggered=false" >> $GITHUB_ENV
+            echo "destroy_triggered=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Initialize Terraform
+        run: terraform init -backend-config=./backend.hcl
+        working-directory: ./terraform  # Specify the directory where your Terraform files are located
+
+      - name: Run Terraform Destroy
+        if: env.destroy_triggered == 'true'
+        run: |
+          echo "Destroying infrastructure..."
+          terraform destroy -auto-approve
+          echo "Stopping pipeline after destroy..."
+          exit 0  
+
   deploy:
     runs-on: ubuntu-latest
+    needs: destroy  
+    if: needs.destroy.outputs.destroy_triggered != 'true' 
     permissions:
       id-token: write
       contents: read
@@ -57,18 +117,6 @@ jobs:
         run: terraform init -backend-config=./backend.hcl
         working-directory: ./terraform
 
-      - name: Read destroy.yaml and run terraform destroy if destroy=true
-        run: |
-          DESTROY=$(grep 'destroy:' destroy.yaml | awk '{print $2}')
-
-          if [[ "$DESTROY" == "true" ]]; then
-            echo "Destroying infrastructure as destroy=true in destroy.yaml"
-            exit 1
-          else
-            echo "Proceeding with apply since destroy=false or not set"
-          fi
-        working-directory: ./terraform
-
       - name: Terraform Plan
         run: terraform plan -out=tfplan
         working-directory: ./terraform
@@ -86,6 +134,21 @@ jobs:
           CLUSTER_NAME=$(terraform output -raw eks_cluster_name)
           echo "EKS_CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
         working-directory: ./terraform
+
+      - name: Create EKS Access Entry for GitHub Actions
+        run: |
+          aws eks create-access-entry \
+            --cluster-name ${{ env.EKS_CLUSTER_NAME }} \
+            --principal-arn ${{ env.ROLE_ARN }} \
+            --access-scope cluster
+
+      - name: Admin Access Entry
+        run: |  
+            aws eks create-access-entry \
+                --cluster-name ${{ env.EKS_CLUSTER_NAME }} \
+                --principal-arn arn:aws:iam::$ACCOUNT_ID:user/${{ secrets.EKS_ADMIN }} \
+                --access-scope cluster \
+                --region $AWS_REGION
 
       - name: Update kube config
         run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region $AWS_REGION
