@@ -3,3 +3,5 @@ trust-policy.json
 .terraform
 ci-permisions
 permission-policy.json
+.terraform.lock.hcl
+terraform/.terraform.lock.hcl
