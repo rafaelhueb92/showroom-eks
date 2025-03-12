@@ -149,14 +149,13 @@ jobs:
           aws eks create-access-entry \
             --cluster-name ${{ env.EKS_CLUSTER_NAME }} \
             --principal-arn ${{ env.ROLE_ARN }} \
-            --access-scope cluster
+            --region $AWS_REGION
 
       - name: Admin Access Entry
         run: |  
             aws eks create-access-entry \
                 --cluster-name ${{ env.EKS_CLUSTER_NAME }} \
                 --principal-arn arn:aws:iam::$ACCOUNT_ID:user/${{ secrets.EKS_ADMIN }} \
-                --access-scope cluster \
                 --region $AWS_REGION
 
       - name: Update kube config
