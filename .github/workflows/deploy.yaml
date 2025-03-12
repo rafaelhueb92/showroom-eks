@@ -49,6 +49,12 @@ jobs:
       - name: Configure backend.hcl file
         run: bash backend-create.sh
         working-directory: ./terraform
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.4.0
+          terraform_wrapper: false
 
       - name: Read destroy.yaml and check if destroy=true
         id: check_destroy
