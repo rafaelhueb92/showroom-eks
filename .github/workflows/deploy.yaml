@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       destroy_triggered: ${{ steps.check_destroy.outputs.destroy_triggered }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
