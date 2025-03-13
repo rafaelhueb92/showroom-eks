@@ -35,12 +35,12 @@ jobs:
       - name: Concatenate environment variables to create IAM Role ARN
         run: |
           ARN="arn:aws:iam::$ACCOUNT_ID:role/$ROLE_NAME-${REPO_NAME#*/}"
-          echo "ROLE_ARN=$ARN" >> $GITHUB_ENV
+          echo "TF_VAR_ROLE_ARN=$ARN" >> $GITHUB_ENV
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ env.ROLE_ARN }}
+          role-to-assume: ${{ env.TF_VAR_ROLE_ARN }}
           aws-region: us-east-1 
       
       - name: Clear AWS Credentials Cache
@@ -101,12 +101,12 @@ jobs:
       - name: Concatenate environment variables to create IAM Role ARN
         run: |
           ARN="arn:aws:iam::$ACCOUNT_ID:role/$ROLE_NAME-${REPO_NAME#*/}"
-          echo "ROLE_ARN=$ARN" >> $GITHUB_ENV
+          echo "TF_VAR_ROLE_ARN=$ARN" >> $GITHUB_ENV
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ env.ROLE_ARN }}
+          role-to-assume: ${{ env.TF_VAR_ROLE_ARN }}
           aws-region: us-east-1 
       
       - name: Clear AWS Credentials Cache
@@ -144,7 +144,7 @@ jobs:
         run: |
           aws eks create-access-entry \
             --cluster-name ${{ env.EKS_CLUSTER_NAME }} \
-            --principal-arn ${{ env.ROLE_ARN }} \
+            --principal-arn ${{ env.TF_VAR_ROLE_ARN }} \
             --region $AWS_REGION
 
       - name: Admin Access Entry

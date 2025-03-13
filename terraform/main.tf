@@ -45,3 +45,15 @@ module "eks" {
   ]
 
 }
+
+module "k8s" {
+
+  source = "./k8s"
+
+  ROLE_ARN = var.ROLE_ARN
+
+  depends_on = [
+    module.eks
+  ]
+
+}
