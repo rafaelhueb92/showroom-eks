@@ -16,11 +16,6 @@ resource "aws_dynamodb_table" "tb_user" {
     type = "S"
   }
 
-  attribute {
-    name = "password"
-    type = "S"
-  }
-
 }
 
 resource "aws_dynamodb_table" "tb_app" {
