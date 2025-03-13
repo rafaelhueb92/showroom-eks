@@ -22,7 +22,11 @@ module "iam" {
 
 module "ssh_key" { 
   source = "./ssh_key"
-   project_name = var.project_name
+  project_name = var.project_name
+}
+
+module "dynamodb" {
+  source = "./dynamodb"
 }
 
 module "eks" {

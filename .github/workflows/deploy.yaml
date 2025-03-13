@@ -83,7 +83,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: destroy  
+    needs: check-destroy  
     if: needs.check-destroy.outputs.destroy_triggered != 'true' 
     permissions:
       id-token: write
