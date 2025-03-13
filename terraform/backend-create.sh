@@ -1,11 +1,15 @@
 #!/bin/bash
 
 ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
-BUCKET_NAME="terraform-backend-${ACCOUNT_ID}"
+BUCKET_NAME="backend-tf-${ACCOUNT_ID}"
+PROJECT_NAME=$(basename $(dirname $(pwd)))
 
-cat <<EOF > backend.hcl
-bucket         = "${BUCKET_NAME}"
-key           = "state/terraform.tfstate"
-region        = "us-east-1"
-dynamodb_table = "terraform-lock"
+cat <<EOF > state.tf
+terraform {
+  backend "s3" {
+    bucket        = "${BUCKET_NAME}"
+    key           = "${PROJECT_NAME}/state/terraform.tfstate"
+    region        = "us-east-1"
+  }
+}
 EOF

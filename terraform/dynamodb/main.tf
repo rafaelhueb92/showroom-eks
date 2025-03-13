@@ -41,24 +41,4 @@ resource "aws_dynamodb_table" "tb_app" {
     type = "S"
   }
 
-  attribute {
-    name = "date"
-    type = "S"
-  }
-
-  attribute {
-    name = "fuel"
-    type = "N"
-  }
-
-  attribute {
-    name = "oil_level"
-    type = "N"
-  }
-
-  attribute {
-    name = "temperature"
-    type = "N"
-  }
-
 }
