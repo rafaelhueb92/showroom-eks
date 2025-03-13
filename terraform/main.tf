@@ -52,6 +52,7 @@ module "k8s" {
 
   ROLE_ARN = var.ROLE_ARN
   eks_cluster_name = module.eks.eks_cluster_name
+  aws_region = var.aws_region
 
   depends_on = [
     module.eks
