@@ -46,7 +46,7 @@ jobs:
       - name: Clear AWS Credentials Cache
         run: rm -rf ~/.aws/cli/cache
       
-      - name: Configure backend.hcl file
+      - name: Configure state.tf file
         run: bash backend-create.sh
         working-directory: ./terraform
       
