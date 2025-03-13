@@ -130,10 +130,6 @@ jobs:
         run: terraform plan -out=tfplan
         working-directory: ./terraform
 
-      - name: Show Plan (Optional)
-        run: terraform show tfplan
-        working-directory: ./terraform
-
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
         working-directory: ./terraform
@@ -186,6 +182,6 @@ jobs:
         if: failure()  
         run: |
           echo "Applying failed. Running terraform destroy..."
-          terraform destroy -auto-approve
+          terraform destroy -auto-approve tfplan
           exit 0
         working-directory: ./terraform
