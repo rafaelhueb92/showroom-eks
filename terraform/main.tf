@@ -32,21 +32,7 @@ module "eks" {
   public_key = module.ssh_key.public_key
 
   depends_on = [
-    module.vpc,module.iam,module.ssh_key
-  ]
-
-}
-
-module "k8s" {
-
-  source = "./k8s"
-
-  ROLE_ARN = var.ROLE_ARN
-  eks_cluster_name = module.eks.eks_cluster_name
-  aws_region = var.aws_region
-
-  depends_on = [
-    module.eks
+    module.iam,module.ssh_key
   ]
 
 }
