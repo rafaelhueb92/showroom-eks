@@ -92,22 +92,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       
-      - name: Set environment variables
-        run: |
-          echo "REPO_NAME=${{ github.repository }}" >> $GITHUB_ENV
-          echo "ROLE_NAME=GitHubActionsRole" >> $GITHUB_ENV
-          echo "ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}" >> $GITHUB_ENV
-
-      - name: Concatenate environment variables to create IAM Role ARN
-        run: |
-          ARN="arn:aws:iam::$ACCOUNT_ID:role/$ROLE_NAME-${REPO_NAME#*/}"
-          echo "TF_VAR_ROLE_ARN=$ARN" >> $GITHUB_ENV
-      
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
         with:
-          role-to-assume: ${{ env.TF_VAR_ROLE_ARN }}
-          aws-region: us-east-1 
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
       
       - name: Clear AWS Credentials Cache
         run: rm -rf ~/.aws/cli/cache
@@ -139,20 +129,6 @@ jobs:
           CLUSTER_NAME=$(terraform output -raw eks_cluster_name)
           echo "EKS_CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
         working-directory: ./terraform
-
-      - name: Create EKS Access Entry for GitHub Actions
-        run: |
-          aws eks create-access-entry \
-            --cluster-name ${{ env.EKS_CLUSTER_NAME }} \
-            --principal-arn ${{ env.TF_VAR_ROLE_ARN }} \
-            --region $AWS_REGION
-
-      - name: Admin Access Entry
-        run: |  
-            aws eks create-access-entry \
-                --cluster-name ${{ env.EKS_CLUSTER_NAME }} \
-                --principal-arn arn:aws:iam::$ACCOUNT_ID:user/${{ secrets.EKS_ADMIN }} \
-                --region $AWS_REGION
 
       - name: Update kube config
         run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region $AWS_REGION

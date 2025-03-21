@@ -10,11 +10,6 @@ provider "aws" {
   }
 }
 
-module "vpc" { 
-  source = "./vpc"
-  project_name = var.project_name
-}
-
 module "iam" { 
   source = "./iam"
   project_name = var.project_name
@@ -25,17 +20,13 @@ module "ssh_key" {
   project_name = var.project_name
 }
 
-module "dynamodb" {
-  source = "./dynamodb"
-}
-
 module "eks" {
 
   source = "./eks"
 
   project_name = var.project_name
-  subnet_ids = module.vpc.subnet_ids
-  security_group_id = module.vpc.security_groups
+  subnet_ids = data.aws_subnets.this.value
+  security_group_id = data.aws_security_group.eks_sg.value
   eks_role_arn = module.iam.eks_role_arn
   ec2_role_arn = module.iam.ec2_role_arn
   public_key = module.ssh_key.public_key
