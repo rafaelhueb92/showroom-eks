@@ -8,6 +8,6 @@ variable "aws_region" {
   default = "us-east-1"
 }
 
-variable "admin_arn" { 
+variable "ROLE_ARN" { 
   description = "Admin arn to entry into the cluster"
 }

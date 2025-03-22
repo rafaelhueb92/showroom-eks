@@ -3,7 +3,7 @@ resource "aws_eks_cluster" "this" {
   role_arn = var.eks_role_arn
 
   access_config {
-    authentication_mode = "API_AND_CONFIG_MAP"
+    authentication_mode = "API"
   }
 
   vpc_config {
@@ -50,6 +50,13 @@ resource "aws_key_pair" "eks_key_pair" {
 }
 
 resource "aws_eks_access_entry" "this" {
-  cluster_name      = aws_eks_cluster.this.name
-  principal_arn     = var.admin_arn
+  cluster_name = aws_eks_cluster.this.name
+  principal_arn = var.admin_arn
+
+  access_policies {
+    policy_arn  = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+    access_scope {
+      type = "cluster"
+    }
+  }
 }

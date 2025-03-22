@@ -30,7 +30,7 @@ module "eks" {
   eks_role_arn = module.iam.eks_role_arn
   ec2_role_arn = module.iam.ec2_role_arn
   public_key = module.ssh_key.public_key
-  admin_arn = var.admin_arn
+  admin_arn = var.ROLE_ARN
 
   depends_on = [
     module.iam,module.ssh_key
