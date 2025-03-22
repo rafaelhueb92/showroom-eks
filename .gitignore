@@ -8,3 +8,4 @@ terraform/.terraform.lock.hcl
 state.tf
 *.hcl
 sandbox
+lb-controller-tp.json
