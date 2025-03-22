@@ -7,3 +7,4 @@ permission-policy.json
 terraform/.terraform.lock.hcl
 state.tf
 *.hcl
+sandbox

@@ -25,8 +25,8 @@ module "eks" {
   source = "./eks"
 
   project_name = var.project_name
-  subnet_ids = data.aws_subnets.this.value
-  security_group_id = data.aws_security_group.eks_sg.value
+  subnet_ids = data.aws_subnets.this.ids
+  security_group_id = data.aws_security_group.eks_sg.id
   eks_role_arn = module.iam.eks_role_arn
   ec2_role_arn = module.iam.ec2_role_arn
   public_key = module.ssh_key.public_key
