@@ -2,6 +2,10 @@ resource "aws_eks_cluster" "this" {
   name     = "${var.project_name}-eks-cluster"
   role_arn = var.eks_role_arn
 
+  access_config {
+    authentication_mode = "API_AND_CONFIG_MAP"
+  }
+
   vpc_config {
     subnet_ids         = var.subnet_ids
     security_group_ids = [var.security_group_id]
