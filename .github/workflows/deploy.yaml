@@ -68,6 +68,7 @@ jobs:
             echo "destroy_triggered=false" >> $GITHUB_ENV
             echo "destroy_triggered=false" >> $GITHUB_OUTPUT
           fi
+        working-directory: ./terraform 
 
       - name: Initialize Terraform
         run: terraform init
