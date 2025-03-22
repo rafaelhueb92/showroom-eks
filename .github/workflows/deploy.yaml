@@ -12,6 +12,8 @@ env:
   ACTIONS_STEP_DEBUG: true
   AWS_DEBUG: true
   AWS_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
 jobs:
 
@@ -26,25 +28,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       
-      - name: Set environment variables
-        run: |
-          echo "REPO_NAME=${{ github.repository }}" >> $GITHUB_ENV
-          echo "ROLE_NAME=GitHubActionsRole" >> $GITHUB_ENV
-          echo "ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}" >> $GITHUB_ENV
-
-      - name: Concatenate environment variables to create IAM Role ARN
-        run: |
-          ARN="arn:aws:iam::$ACCOUNT_ID:role/$ROLE_NAME-${REPO_NAME#*/}"
-          echo "TF_VAR_ROLE_ARN=$ARN" >> $GITHUB_ENV
-      
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ env.TF_VAR_ROLE_ARN }}
-          aws-region: us-east-1 
-      
-      - name: Clear AWS Credentials Cache
-        run: rm -rf ~/.aws/cli/cache
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
       
       - name: Configure state.tf file
         run: bash backend-create.sh
@@ -90,38 +79,35 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-      
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v3
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
       
-      - name: Clear AWS Credentials Cache
-        run: rm -rf ~/.aws/cli/cache
-      
+      - name: ADD IAM user arn into ENV
+        run : echo "TF_VAR_admin_arn=$(aws sts get-caller-identity --query Arn | tr -d '"')" >> $GITHUB_ENV 
+            
       - name: Configure backend.hcl file
         run: bash backend-create.sh
         working-directory: ./terraform
       
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v1
-        with:
-          terraform_version: 1.4.0
-          terraform_wrapper: false
+        uses: hashicorp/setup-terraform@v3
       
       - name: Terraform Init
         run: terraform init
         working-directory: ./terraform
 
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
+        run: terraform plan -no-color -input=false -out planfile
         working-directory: ./terraform
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply -auto-approve
         working-directory: ./terraform
 
       - name: Retrieve EKS Cluster Name from Terraform

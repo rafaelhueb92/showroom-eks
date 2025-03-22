@@ -2,10 +2,6 @@ resource "aws_eks_cluster" "this" {
   name     = "${var.project_name}-eks-cluster"
   role_arn = var.eks_role_arn
 
-  access_config {
-    authentication_mode = "API_AND_CONFIG_MAP"
-  }
-
   vpc_config {
     subnet_ids         = var.subnet_ids
     security_group_ids = [var.security_group_id]
@@ -47,4 +43,9 @@ resource "aws_key_pair" "eks_key_pair" {
   tags = {
     created_by_me = "TRUE"
   }
+}
+
+resource "aws_eks_access_entry" "this" {
+  cluster_name      = aws_eks_cluster.example.name
+  principal_arn     = var.admin_arn
 }
