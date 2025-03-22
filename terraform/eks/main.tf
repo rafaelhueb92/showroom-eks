@@ -7,7 +7,7 @@ resource "aws_eks_cluster" "this" {
   }
 
   vpc_config {
-    subnet_ids         = split(",", var.subnet_ids)
+    subnet_ids         = var.subnet_ids
     security_group_ids = [var.security_group_id]
   }
 
