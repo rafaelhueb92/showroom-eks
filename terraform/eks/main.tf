@@ -20,7 +20,7 @@ resource "aws_eks_node_group" "node_group" {
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "${var.project_name}-node"
   node_role_arn   = var.ec2_role_arn
-  subnet_ids      = split(",", var.subnet_ids)
+  subnet_ids      = var.subnet_ids
 
   scaling_config {
     desired_size = 2
