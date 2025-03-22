@@ -152,16 +152,17 @@ jobs:
         with:
          version: 'latest' 
       
-      - name: Check Kubectl
-        run: |
-            kubectl get ns 
-
       - name: Install ArgoCD using Helm and Run Helm test
         uses: WyriHaximus/github-action-helm3@v3
         with:
           exec: | 
-            helm upgrade --install argocd bitnami/argo-cd --namespace argocd --create-namespace
-            helm test argocd --namespace argocd
+            ARGO_IS_INSTALLED=$(kubectl get ns argocd --no-headers | wc -l)
+            if [ $ARGO_IS_INSTALLED -gt 0 ]; then
+                echo "ARGO IS ALREADY INSTALLED!"
+            else
+                helm upgrade --install argocd bitnami/argo-cd --namespace argocd --create-namespace
+                helm test argocd --namespace argocd
+            fi
 
       - name: Terraform Destroy if Apply fails
         if: failure()  
