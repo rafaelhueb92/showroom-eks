@@ -46,6 +46,6 @@ resource "aws_key_pair" "eks_key_pair" {
 }
 
 resource "aws_eks_access_entry" "this" {
-  cluster_name      = aws_eks_cluster.example.name
+  cluster_name      = aws_eks_cluster.this.name
   principal_arn     = var.admin_arn
 }
