@@ -25,6 +25,11 @@ module "acm" {
   project_name = var.project_name
 }
 
+module "secrets" {
+  source ="./secrets"
+  project_name = var.project_name
+}
+
 module "eks" {
 
   source = "./eks"
