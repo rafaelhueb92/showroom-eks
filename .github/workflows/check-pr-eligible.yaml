@@ -1,7 +1,7 @@
-name: Terraform Deploy Infrastructure
+name: Terraform Deploy Infrastructure - Check if The PR is Eligible
 
 on:
-  push:
+  pull_request:
     branches:
       - main
 
@@ -70,49 +70,6 @@ jobs:
 
       - name: Terraform Plan
         id: terraform-plan
+        if: steps.check-destroy.outputs.DESTROY == 'false'
         run: terraform plan -out=tfplan
         working-directory: ./terraform
-
-      - name: Apply Changes 
-        if: steps.check-destroy.outputs.DESTROY == 'false'
-        run: terraform apply -auto-approve
-        working-directory: ./terraform
-
-      - name: Destroy Resources (if destroy flag is true)
-        if: steps.check-destroy.outputs.DESTROY == 'true'
-        run: terraform destroy -auto-approve
-        working-directory: ./terraform
-        continue-on-error: true
-
-      - name: Set Terraform Outputs to GitHub Env
-        if: steps.check-destroy.outputs.DESTROY == 'false'
-        run: |
-          bash ./../bash/set-tf-var-github-env.sh "EKS_CLUSTER_NAME" "eks_cluster_name"
-          bash ./../bash/set-tf-var-github-env.sh "PROJECT_NAME" "project_name"
-          bash ./../bash/set-tf-var-github-env.sh "CERTIFICATE_ARN" "certificate_arn"
-          bash ./../bash/set-tf-var-github-env.sh "ARGOCD_SECRET" "secret_arn"
-        working-directory: ./terraform
-
-      - name: Upload Terraform Outputs as Artifacts
-        uses: actions/upload-artifact@v2
-        if: steps.check-destroy.outputs.DESTROY == 'false'
-        with:
-          name: terraform-outputs
-          path: env.txt
-      
-      ## IF FAILS
-      
-      - name: Refresh State to Get Applied Resources (failure)
-        if: failure()  
-        run: terraform apply -refresh-only -auto-approve
-        working-directory: ./terraform
-
-      - name: List Changed Resources (failure)
-        id: list-resources
-        run: bash ./../bash/list-changed-resources.sh
-        working-directory: ./terraform
-
-      - name: Destroy Only Changed Resources (failure)
-        run: bash ./../bash/destroy-changed-resources.sh
-        working-directory: ./terraform
-      
