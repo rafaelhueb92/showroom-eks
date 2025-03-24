@@ -193,5 +193,3 @@ Now, ArgoCD should be accessible at **https://argocd.example.com**.
 | ---------------------------------------------- | -------------------------------------------------- |
 | ArgoCD running **inside the same EKS cluster** | `https://kubernetes.default.svc`                   |
 | ArgoCD managing **an external EKS cluster**    | EKS API URL (`https://XXXXXXXX.eks.amazonaws.com`) |
-
-🚀 Your ArgoCD is now correctly configured to deploy applications to EKS! Let me know if you have any questions.
