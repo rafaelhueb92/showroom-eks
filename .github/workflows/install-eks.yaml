@@ -18,12 +18,14 @@ jobs:
     steps:
       - name: Update kube config
         run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region $AWS_REGION
+        
       - name: Add Helm repositories
         uses: WyriHaximus/github-action-helm3@v3
         with:
           exec: | 
             helm repo add bitnami https://charts.bitnami.com/bitnami
             helm repo update
+
       - name: Install Kubectl
         uses: azure/setup-kubectl@v3
         with:
@@ -37,13 +39,7 @@ jobs:
         uses: WyriHaximus/github-action-helm3@v3
         with:
           exec: | 
-            ARGO_IS_INSTALLED=$(kubectl get ns argocd --no-headers | wc -l)
-            if [ $ARGO_IS_INSTALLED -gt 0 ]; then
-                echo "ARGO IS ALREADY INSTALLED!"
-            else
-                helm upgrade --install argocd bitnami/argo-cd --namespace argocd --create-namespace
-                helm test argocd --namespace argocd
-            fi
+            bash ./bash/install-argocd.sh
   
   exposing-cluster-and-argocd:
     runs-on: ubuntu-latest
@@ -58,5 +54,5 @@ jobs:
       - name: Create Ingress Resource for ArgoCD
         working-directory: ./bash 
         run: | 
-          bash create-ingress-resource.sh
+          bash ./bash/create-ingress-resource.sh
           

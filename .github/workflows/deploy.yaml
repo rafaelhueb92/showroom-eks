@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Configure state.tf file
-        run: bash backend-create.sh
+        run: bash ./../bash/backend-create.sh
         working-directory: ./terraform
 
   init:
@@ -91,7 +91,6 @@ jobs:
       - name: Run Terraform apply
         run: terraform apply -auto-approve
         working-directory: ./terraform 
-        continue-on-error: true
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}  
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }} 
@@ -99,22 +98,22 @@ jobs:
       
       - name: Retrieve EKS Cluster Name from Terraform
         run: |
-          bash set-tf-var-github-env.sh "EKS_CLUSTER_NAME" "eks_cluster_name"
+          bash ./../bash/set-tf-var-github-env.sh "EKS_CLUSTER_NAME" "eks_cluster_name"
         working-directory: ./terraform
 
       - name: Retrieve Project Name from Terraform
         run: |
-          bash set-tf-var-github-env.sh "PROJECT_NAME" "project_name"
+          bash ./../bash/set-tf-var-github-env.sh "PROJECT_NAME" "project_name"
         working-directory: ./terraform
 
       - name: Retrieve ACM ARN from Terraform
         run: |
-          bash set-tf-var-github-env.sh "CERTIFICATE_ARN" "certificate_arn"
+          bash ./../bash/set-tf-var-github-env.sh "CERTIFICATE_ARN" "certificate_arn"
         working-directory: ./terraform
 
       - name: Retrieve Secret argocd ARN from Terraform
         run: |
-          bash set-tf-var-github-env.sh "ARGOCD_SECRET" "secret_arn"
+          bash ./../bash/set-tf-var-github-env.sh "ARGOCD_SECRET" "secret_arn"
         working-directory: ./terraform
 
   destroy:
@@ -159,4 +158,4 @@ jobs:
             echo "Destroying $resource"
             terraform destroy -auto-approve -target="$resource"
           done < changed_resources.txt
-        working-directory: ./terraform 
+        working-directory: ./terraform
