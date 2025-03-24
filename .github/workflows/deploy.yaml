@@ -1,4 +1,4 @@
-name: Deploy to AWS
+name: Terraform Deploy Infrastructure
 
 on:
   push:
@@ -15,27 +15,16 @@ env:
 
 jobs:
 
-  check-destroy:
+  configure-aws-credentials:
     runs-on: ubuntu-latest
-    outputs:
-      destroy_triggered: ${{ steps.check_destroy.outputs.destroy_triggered }}
-    permissions:
-      id-token: write
-      contents: read
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-     
+      - name: Check out code
+        uses: actions/checkout@v2
+
       - name: Set environment variables
         run: |
-          echo "REPO_NAME=${{ github.repository }}" >> $GITHUB_ENV
-          echo "ROLE_NAME=GitHubActionsRole" >> $GITHUB_ENV
-          echo "ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}" >> $GITHUB_ENV
-
-      - name: Concatenate environment variables to create IAM Role ARN
-        run: |
-          ARN="arn:aws:iam::$ACCOUNT_ID:role/$ROLE_NAME-${REPO_NAME#*/}"
-          echo "TF_VAR_ROLE_ARN=$ARN" >> $GITHUB_ENV
+          bash set-var-github-env.sh
+        working-directory: ./bash 
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -45,130 +34,129 @@ jobs:
 
       - name: Clear AWS Credentials Cache
         run: rm -rf ~/.aws/cli/cache
-      
+
+  configure-terraform-backend:
+    needs: configure-aws-credentials
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
       - name: Configure state.tf file
         run: bash backend-create.sh
         working-directory: ./terraform
-      
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v1
-        with:
-          terraform_version: 1.4.0
-          terraform_wrapper: false
 
-      - name: Read destroy.yaml and check if destroy=true
-        id: check_destroy
-        run: |
-          DESTROY=$(grep 'destroy:' destroy.yaml | awk '{print $2}')
-          if [[ "$DESTROY" == "true" ]]; then
-            echo "Destroy triggered"
-            echo "destroy_triggered=true" >> $GITHUB_ENV
-            echo "destroy_triggered=true" >> $GITHUB_OUTPUT
-          else
-            echo "destroy_triggered=false" >> $GITHUB_ENV
-            echo "destroy_triggered=false" >> $GITHUB_OUTPUT
-          fi
-        working-directory: ./terraform 
-
-      - name: Initialize Terraform
-        run: terraform init
-        working-directory: ./terraform  # Specify the directory where your Terraform files are located
-
-      - name: Run Terraform Destroy
-        if: env.destroy_triggered == 'true'
-        run: |
-          echo "Destroying infrastructure..."
-          terraform destroy -auto-approve
-          echo "Stopping pipeline after destroy..."
-          exit 0  
-
-  deploy:
+  init:
     runs-on: ubuntu-latest
-    needs: check-destroy  
-    if: needs.check-destroy.outputs.destroy_triggered != 'true' 
-    permissions:
-      id-token: write
-      contents: read
+    outputs:
+      destroy_flag: ${{ steps.check-destroy.outputs.destroy }}
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set environment variables
+      - name: Check Destroy Flag
+        id: check-destroy
         run: |
-          echo "REPO_NAME=${{ github.repository }}" >> $GITHUB_ENV
-          echo "ROLE_NAME=GitHubActionsRole" >> $GITHUB_ENV
-          echo "ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}" >> $GITHUB_ENV
+          DESTROY=$(yq '.destroy' destroy.yaml)
+          echo "Destroy flag: $DESTROY"
+          echo "destroy=$DESTROY" >> "$GITHUB_OUTPUT"
+        working-directory: ./terraform 
 
-      - name: Concatenate environment variables to create IAM Role ARN
-        run: |
-          ARN="arn:aws:iam::$ACCOUNT_ID:role/$ROLE_NAME-${REPO_NAME#*/}"
-          echo "TF_VAR_ROLE_ARN=$ARN" >> $GITHUB_ENV
-      
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ env.TF_VAR_ROLE_ARN }}
-          aws-region: us-east-1 
-
-      - name: Clear AWS Credentials Cache
-        run: rm -rf ~/.aws/cli/cache
-            
-      - name: Configure backend.hcl file
-        run: bash backend-create.sh
-        working-directory: ./terraform
-      
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-      
       - name: Terraform Init
-        run: terraform init
-        working-directory: ./terraform
+        run: terraform init -reconfigure
+        working-directory: ./terraform 
+
+  plan:
+    runs-on: ubuntu-latest
+    needs: init
+    outputs:
+      plan_status: ${{ steps.terraform-plan.outcome }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Terraform Plan
-        run: terraform plan -no-color -input=false -out planfile
-        working-directory: ./terraform
+        id: terraform-plan
+        run: terraform plan -out=tfplan
+        working-directory: ./terraform 
 
-      - name: Terraform Apply
+  apply:
+    runs-on: ubuntu-latest
+    needs: plan
+    if: needs.init.outputs.destroy_flag == 'false'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Run Terraform apply
         run: terraform apply -auto-approve
-        working-directory: ./terraform
-
+        working-directory: ./terraform 
+        continue-on-error: true
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}  
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }} 
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }} 
+      
       - name: Retrieve EKS Cluster Name from Terraform
         run: |
-          CLUSTER_NAME=$(terraform output -raw eks_cluster_name)
-          echo "EKS_CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
+          bash set-tf-var-github-env.sh "EKS_CLUSTER_NAME" "eks_cluster_name"
         working-directory: ./terraform
 
-      - name: Update kube config
-        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region $AWS_REGION
-
-      - name: Add Helm repositories
-        uses: WyriHaximus/github-action-helm3@v3
-        with:
-          exec: | 
-            helm repo add bitnami https://charts.bitnami.com/bitnami
-            helm repo update
-
-      - name: Install Kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-         version: 'latest' 
-      
-      - name: Install ArgoCD using Helm and Run Helm test
-        uses: WyriHaximus/github-action-helm3@v3
-        with:
-          exec: | 
-            ARGO_IS_INSTALLED=$(kubectl get ns argocd --no-headers | wc -l)
-            if [ $ARGO_IS_INSTALLED -gt 0 ]; then
-                echo "ARGO IS ALREADY INSTALLED!"
-            else
-                helm upgrade --install argocd bitnami/argo-cd --namespace argocd --create-namespace
-                helm test argocd --namespace argocd
-            fi
-
-      - name: Terraform Destroy if Apply fails
-        if: failure()  
+      - name: Retrieve Project Name from Terraform
         run: |
-          echo "Applying failed. Running terraform destroy..."
-          terraform destroy -auto-approve
-          exit 0
+          bash set-tf-var-github-env.sh "PROJECT_NAME" "project_name"
         working-directory: ./terraform
+
+      - name: Retrieve ACM ARN from Terraform
+        run: |
+          bash set-tf-var-github-env.sh "CERTIFICATE_ARN" "certificate_arn"
+        working-directory: ./terraform
+
+      - name: Retrieve Secret argocd ARN from Terraform
+        run: |
+          bash set-tf-var-github-env.sh "ARGOCD_SECRET" "secret_arn"
+        working-directory: ./terraform
+
+  destroy:
+    runs-on: ubuntu-latest
+    needs: plan
+    if: needs.init.outputs.destroy_flag == 'true'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Run Terraform destroy
+        run: terraform destroy -auto-approve
+        working-directory: ./terraform 
+        continue-on-error: true
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}  
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }} 
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }} 
+  
+  rollback:
+    runs-on: ubuntu-latest
+    needs: apply
+    if: failure()
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Refresh State to Get Applied Resources
+        run: terraform apply -refresh-only -auto-approve
+        working-directory: ./terraform 
+
+      - name: List Changed Resources
+        id: list-resources
+        run: |
+          terraform state list > changed_resources.txt
+          cat changed_resources.txt
+        working-directory: ./terraform 
+
+      - name: Destroy Only Changed Resources
+        run: |
+          while read resource; do
+            echo "Destroying $resource"
+            terraform destroy -auto-approve -target="$resource"
+          done < changed_resources.txt
+        working-directory: ./terraform 

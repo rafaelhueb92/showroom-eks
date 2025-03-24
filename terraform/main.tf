@@ -20,6 +20,11 @@ module "ssh_key" {
   project_name = var.project_name
 }
 
+module "acm" {
+  source = "./acm"
+  project_name = var.project_name
+}
+
 module "eks" {
 
   source = "./eks"
