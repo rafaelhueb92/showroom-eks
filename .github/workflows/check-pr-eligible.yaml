@@ -12,8 +12,7 @@ env:
 
 jobs:
 
-  # Configure AWS Credentials
-  configure-aws-credentials:
+  check-pr-terraform:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -36,21 +35,10 @@ jobs:
       - name: Clear AWS Credentials Cache
         run: rm -rf ~/.aws/cli/cache
 
-  set-terraform-backend:
-    needs: configure-aws-credentials
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
-
       - name: Configure Terraform backend (state.tf)
         run: bash ./../bash/backend-create.sh
         working-directory: ./terraform
 
-  deploy-terraform-infra:
-    needs: set-terraform-backend
-    runs-on: ubuntu-latest
-    steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 

@@ -29,7 +29,7 @@ jobs:
         run: bash ./read-output.sh
         working-directory: ./bash 
 
-  configure-aws-credentials:
+  install-eks-resources:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -47,15 +47,9 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ needs.set-output.outputs.role_arn }}
-          aws-region: us-east-1 
 
       - name: Clear AWS Credentials Cache
         run: rm -rf ~/.aws/cli/cache
-  
-  eks-config:
-    runs-on: ubuntu-latest
-    if: needs.init.outputs.destroy_flag == 'false'
-    steps:
     
       - name: Upload artifact
         uses: actions/upload-artifact@v4

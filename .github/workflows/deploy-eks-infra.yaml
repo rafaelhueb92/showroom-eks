@@ -13,7 +13,7 @@ env:
 jobs:
 
   # Configure AWS Credentials
-  configure-aws-credentials:
+  deploy-eks-cluster:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -36,10 +36,6 @@ jobs:
       - name: Clear AWS Credentials Cache
         run: rm -rf ~/.aws/cli/cache
 
-  set-terraform-backend:
-    needs: configure-aws-credentials
-    runs-on: ubuntu-latest
-    steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
@@ -47,10 +43,6 @@ jobs:
         run: bash ./../bash/backend-create.sh
         working-directory: ./terraform
 
-  deploy-terraform-infra:
-    needs: set-terraform-backend
-    runs-on: ubuntu-latest
-    steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
@@ -74,18 +66,18 @@ jobs:
         working-directory: ./terraform
 
       - name: Apply Changes 
-        if: steps.check-destroy.outputs.DESTROY == 'false'
+        if: env.DESTROY == 'false'
         run: terraform apply -auto-approve
         working-directory: ./terraform
 
       - name: Destroy Resources (if destroy flag is true)
-        if: steps.check-destroy.outputs.DESTROY == 'true'
+        if: env.DESTROY == 'true'
         run: terraform destroy -auto-approve
         working-directory: ./terraform
         continue-on-error: true
 
       - name: Set Terraform Outputs to GitHub Env
-        if: steps.check-destroy.outputs.DESTROY == 'false'
+        if: env,DESTROY == 'false'
         run: |
           bash ./../bash/set-tf-var-github-env.sh "EKS_CLUSTER_NAME" "eks_cluster_name"
           bash ./../bash/set-tf-var-github-env.sh "PROJECT_NAME" "project_name"
@@ -95,7 +87,7 @@ jobs:
 
       - name: Upload Terraform Outputs as Artifacts
         uses: actions/upload-artifact@v2
-        if: steps.check-destroy.outputs.DESTROY == 'false'
+        if: env.DESTROY == 'false'
         with:
           name: terraform-outputs
           path: env.txt
@@ -108,11 +100,12 @@ jobs:
         working-directory: ./terraform
 
       - name: List Changed Resources (failure)
+        if: failure() 
         id: list-resources
         run: bash ./../bash/list-changed-resources.sh
         working-directory: ./terraform
 
       - name: Destroy Only Changed Resources (failure)
+        if: failure() 
         run: bash ./../bash/destroy-changed-resources.sh
         working-directory: ./terraform
-      
