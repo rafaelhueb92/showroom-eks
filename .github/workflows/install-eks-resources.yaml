@@ -87,3 +87,9 @@ jobs:
         run: bash create-ingress-resource.sh \
              ${{ needs.set-output.outputs.certificate_arn }} \ 
              ${{ needs.set-output.outputs.project_name }}
+
+      - name: Create Argocd Project and Application
+        working-directory: ./argocd
+        run: | 
+            kubectl apply -f project.yaml
+            kubectl apply -f application.yaml

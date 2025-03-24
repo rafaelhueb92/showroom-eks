@@ -75,7 +75,6 @@ jobs:
           bash ./../bash/set-tf-var-github-env.sh "EKS_CLUSTER_NAME" "eks_cluster_name"
           bash ./../bash/set-tf-var-github-env.sh "PROJECT_NAME" "project_name"
           bash ./../bash/set-tf-var-github-env.sh "CERTIFICATE_ARN" "certificate_arn"
-          bash ./../bash/set-tf-var-github-env.sh "ARGOCD_SECRET" "secret_arn"
         working-directory: ./terraform
 
       - name: Upload Terraform Outputs as Artifacts

@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: showroom-eks-project
+  namespace: argocd  # Ensure this is the namespace where ArgoCD is installed
+spec:
+  description: "Project for managing showroom applications"
+  sourceRepos:
+    - "https://github.com/rafaelhueb92/showroom-eks-manifests.git"  # Allow this repo
+  destinations:
+    - namespace: dev
+      server: https://kubernetes.default.svc  # Allow deploying to the cluster
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
