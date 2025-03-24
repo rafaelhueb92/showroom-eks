@@ -4,6 +4,6 @@ if [ $ARGO_IS_INSTALLED -gt 0 ]; then
 else
     helm upgrade --install argocd bitnami/argo-cd --namespace argocd --create-namespace
     helm test argocd --namespace argocd
-    bash store-argocd-secret-aws.sh
+    bash store-argocd-secret-aws.sh $1
 fi
 

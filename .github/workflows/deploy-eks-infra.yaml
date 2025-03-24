@@ -26,7 +26,7 @@ jobs:
 
       - name: Set environment variables
         run: |
-          bash set-var-github-env.sh
+          bash set-var-github-env.sh ${{ github.repository }} ${{ secrets.AWS_ACCOUNT_ID }}
         working-directory: ./bash 
       
       - name: Configure AWS credentials
@@ -61,7 +61,7 @@ jobs:
       - name: Check Destroy Flag
         id: check-destroy
         run: bash ./../bash/check-destroy.sh
-        working-directory: ./terraform 
+        working-directory: ./terraform
 
       - name: Terraform Init
         run: terraform init -reconfigure
@@ -114,6 +114,12 @@ jobs:
         run: |
           bash ./../bash/set-tf-var-github-env.sh "ARGOCD_SECRET" "secret_arn"
         working-directory: ./terraform
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: env-output
+          path: env.txt
 
   destroy:
     runs-on: ubuntu-latest

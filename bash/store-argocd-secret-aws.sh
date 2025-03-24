@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SECRET_NAME=$ARGOCD_SECRET
+SECRET_NAME=$1
 ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 --decode)
 
 if [ -z "$ARGOCD_PASSWORD" ]; then
