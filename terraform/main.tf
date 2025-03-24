@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "us-east-1"
+  region = var.aws_region
 
   # Default tags for all resources
   default_tags {
@@ -10,23 +10,19 @@ provider "aws" {
   }
 }
 
-terraform {
-  backend "s3" {}
-}
-
-module "vpc" { 
-  source = "./vpc"
-  project_name = var.project_name
-}
-
 module "iam" { 
   source = "./iam"
   project_name = var.project_name
 }
 
-module "secret" { 
-  source = "./secret"
-  project_name = = var.project_name
+module "ssh_key" { 
+  source = "./ssh_key"
+  project_name = var.project_name
+}
+
+module "acm" {
+  source = "./acm"
+  project_name = var.project_name
 }
 
 module "eks" {
@@ -34,24 +30,15 @@ module "eks" {
   source = "./eks"
 
   project_name = var.project_name
-  subnet_ids = module.vpc.subnet_ids
-  security_group_id = module.vpc.security_groups
+  subnet_ids = data.aws_subnets.this.ids
+  security_group_id = data.aws_security_group.eks_sg.id
   eks_role_arn = module.iam.eks_role_arn
+  ec2_role_arn = module.iam.ec2_role_arn
+  public_key = module.ssh_key.public_key
+  admin_arn = var.ROLE_ARN
 
   depends_on = [
-    module.vpc,module.iam
-  ]
-
-}
-
-module "eks_setup" {
-  source = "./install-eks"
-
-  cluster_name = module.eks.eks_cluster_name
-  project_name = = var.project_name
-
-  depends_on = [
-    module.vpc,
+    module.iam,module.ssh_key
   ]
 
 }

@@ -1,0 +1,55 @@
+name: Install EKS Cluster standard resources
+
+on:
+  workflow_run:
+    workflows: ["Terraform Deploy Infrastructure"]
+    types:
+      - completed
+env:
+  ACTIONS_STEP_DEBUG: true
+  AWS_DEBUG: true
+  AWS_REGION: us-east-1
+
+jobs:
+  
+  eks-config:
+    runs-on: ubuntu-latest
+    if: needs.init.outputs.destroy_flag == 'false'
+    steps:
+      - name: Update kube config
+        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region $AWS_REGION
+        
+      - name: Add Helm repositories
+        uses: WyriHaximus/github-action-helm3@v3
+        with:
+          exec: | 
+            helm repo add bitnami https://charts.bitnami.com/bitnami
+            helm repo update
+
+      - name: Install Kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+         version: 'latest' 
+
+  installing-argocd:
+    runs-on: ubuntu-latest
+    needs: eks-config
+    steps:
+      - name: Install ArgoCD using Helm and Run Helm test
+        uses: WyriHaximus/github-action-helm3@v3
+        with:
+          exec: bash ./bash/install-argocd.sh
+  
+  exposing-cluster-and-argocd:
+    runs-on: ubuntu-latest
+    needs: eks-config
+    steps: 
+      - name: Install LoadBalancer Controller
+        uses: WyriHaximus/github-action-helm3@v3
+        with:
+         exec: bash ./bash/install-lb-controller.sh
+        
+      - name: Create Ingress Resource for ArgoCD
+        working-directory: ./bash 
+        run: bash create-ingress-resource.sh
+          

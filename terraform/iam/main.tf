@@ -32,7 +32,6 @@ resource "aws_iam_policy_attachment" "eks_service_policy" {
   name       = "${var.project_name}-service-policy-attachment"
 }
 
-# EC2 Role for EKS Worker Nodes
 resource "aws_iam_role" "ec2_role" {
   name = "eks-worker-node-${var.project_name}-role"
 
