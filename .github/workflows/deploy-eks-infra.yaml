@@ -79,10 +79,10 @@ jobs:
         working-directory: ./terraform
 
       - name: Upload Terraform Outputs as Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: env.DESTROY == 'false'
         with:
-          name: terraform-outputs
+          name: env-output
           path: env.txt
       
       ## IF FAILS
