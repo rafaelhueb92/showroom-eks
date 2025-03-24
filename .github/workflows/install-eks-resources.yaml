@@ -56,11 +56,13 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.init.outputs.destroy_flag == 'false'
     steps:
+    
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: workflow-output
           path: output.txt
+
       - name: Update kube config
         run: aws eks update-kubeconfig --name ${{ needs.set-output.outputs.cluster_name }} --region $AWS_REGION
         
@@ -76,19 +78,11 @@ jobs:
         with:
          version: 'latest' 
 
-  installing-argocd:
-    runs-on: ubuntu-latest
-    needs: eks-config
-    steps:
       - name: Install ArgoCD using Helm and Run Helm test
         uses: WyriHaximus/github-action-helm3@v3
         with:
           exec: bash ./bash/install-argocd.sh ${{ needs.set-output.outputs.certificate_arn }}
-  
-  exposing-cluster-and-argocd:
-    runs-on: ubuntu-latest
-    needs: eks-config
-    steps: 
+
       - name: Install LoadBalancer Controller
         uses: WyriHaximus/github-action-helm3@v3
         with:
@@ -99,4 +93,3 @@ jobs:
         run: bash create-ingress-resource.sh \
              ${{ needs.set-output.outputs.certificate_arn }} \ 
              ${{ needs.set-output.outputs.project_name }}
-          

@@ -15,146 +15,108 @@ env:
 
 jobs:
 
+  # Configure AWS Credentials
   configure-aws-credentials:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
     steps:
-      - name: Check out code
+      - name: Checkout Repository
         uses: actions/checkout@v2
 
       - name: Set environment variables
         run: |
           bash set-var-github-env.sh ${{ github.repository }} ${{ secrets.AWS_ACCOUNT_ID }}
         working-directory: ./bash 
-      
-      - name: Configure AWS credentials
+
+      - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.TF_VAR_ROLE_ARN }}
-          aws-region: us-east-1 
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Clear AWS Credentials Cache
         run: rm -rf ~/.aws/cli/cache
 
-  configure-terraform-backend:
+  # Configure Terraform Backend and State
+  terraform-backend:
     needs: configure-aws-credentials
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code
+      - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Configure state.tf file
+      - name: Configure Terraform backend (state.tf)
         run: bash ./../bash/backend-create.sh
         working-directory: ./terraform
 
-  init:
+  # Terraform Init, Plan, and Apply in One Job
+  terraform:
+    needs: terraform-backend
     runs-on: ubuntu-latest
-    needs: configure-terraform-backend
-    outputs:
-        destroy_flag: ${{ steps.check-destroy.outputs.DESTROY }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.4.0
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: terraform init -reconfigure
+        working-directory: ./terraform
 
       - name: Check Destroy Flag
         id: check-destroy
         run: bash ./../bash/check-destroy.sh
         working-directory: ./terraform
 
-      - name: Terraform Init
-        run: terraform init -reconfigure
-        working-directory: ./terraform 
-
-  plan:
-    runs-on: ubuntu-latest
-    needs: init
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
       - name: Terraform Plan
         id: terraform-plan
         run: terraform plan -out=tfplan
-        working-directory: ./terraform 
+        working-directory: ./terraform
 
-  apply:
-    runs-on: ubuntu-latest
-    needs: plan
-    if: needs.init.outputs.destroy_flag  == 'false'
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Run Terraform apply
+      - name: Apply Changes 
+        if: steps.check-destroy.outputs.DESTROY == 'false'
         run: terraform apply -auto-approve
-        working-directory: ./terraform 
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}  
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }} 
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }} 
-      
-      - name: Retrieve EKS Cluster Name from Terraform
+        working-directory: ./terraform
+
+      - name: Destroy Resources (if destroy flag is true)
+        if: steps.check-destroy.outputs.DESTROY == 'true'
+        run: terraform destroy -auto-approve
+        working-directory: ./terraform
+        continue-on-error: true
+
+      - name: Set Terraform Outputs to GitHub Env
+        if: steps.check-destroy.outputs.DESTROY == 'false'
         run: |
           bash ./../bash/set-tf-var-github-env.sh "EKS_CLUSTER_NAME" "eks_cluster_name"
-        working-directory: ./terraform
-
-      - name: Retrieve Project Name from Terraform
-        run: |
           bash ./../bash/set-tf-var-github-env.sh "PROJECT_NAME" "project_name"
-        working-directory: ./terraform
-
-      - name: Retrieve ACM ARN from Terraform
-        run: |
           bash ./../bash/set-tf-var-github-env.sh "CERTIFICATE_ARN" "certificate_arn"
-        working-directory: ./terraform
-
-      - name: Retrieve Secret argocd ARN from Terraform
-        run: |
           bash ./../bash/set-tf-var-github-env.sh "ARGOCD_SECRET" "secret_arn"
         working-directory: ./terraform
-      
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+
+      - name: Upload Terraform Outputs as Artifacts
+        uses: actions/upload-artifact@v2
+        if: steps.check-destroy.outputs.DESTROY == 'false'
         with:
-          name: env-output
+          name: terraform-outputs
           path: env.txt
-
-  destroy:
-    runs-on: ubuntu-latest
-    needs: plan
-    if: needs.init.outputs.destroy_flag == 'true'
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Run Terraform destroy
-        run: terraform destroy -auto-approve
-        working-directory: ./terraform 
-        continue-on-error: true
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}  
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }} 
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }} 
-  
-  rollback:
-    runs-on: ubuntu-latest
-    needs: apply
-    if: failure()
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Refresh State to Get Applied Resources
+      
+      - name: Refresh State to Get Applied Resources (failure)
+        if: failure()  
         run: terraform apply -refresh-only -auto-approve
-        working-directory: ./terraform 
+        working-directory: ./terraform
 
-      - name: List Changed Resources
+      - name: List Changed Resources (failure)
         id: list-resources
         run: bash ./../bash/list-changed-resources.sh
-        working-directory: ./terraform 
+        working-directory: ./terraform
 
-      - name: Destroy Only Changed Resources
+      - name: Destroy Only Changed Resources (failure)
         run: bash ./../bash/destroy-changed-resources.sh
         working-directory: ./terraform
+      
