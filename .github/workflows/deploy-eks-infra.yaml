@@ -48,18 +48,13 @@ jobs:
 
   init:
     runs-on: ubuntu-latest
-    outputs:
-      destroy_flag: ${{ steps.check-destroy.outputs.destroy }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Check Destroy Flag
         id: check-destroy
-        run: |
-          DESTROY=$(yq '.destroy' destroy.yaml)
-          echo "Destroy flag: $DESTROY"
-          echo "destroy=$DESTROY" >> "$GITHUB_OUTPUT"
+        run: bash ./../bash/check-destroy.sh
         working-directory: ./terraform 
 
       - name: Terraform Init
@@ -69,8 +64,6 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     needs: init
-    outputs:
-      plan_status: ${{ steps.terraform-plan.outcome }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -83,7 +76,7 @@ jobs:
   apply:
     runs-on: ubuntu-latest
     needs: plan
-    if: needs.init.outputs.destroy_flag == 'false'
+    if: $DESTROY == 'false'
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -119,7 +112,7 @@ jobs:
   destroy:
     runs-on: ubuntu-latest
     needs: plan
-    if: needs.init.outputs.destroy_flag == 'true'
+    if: $DESTROY == 'true'
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4

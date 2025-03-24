@@ -38,8 +38,7 @@ jobs:
       - name: Install ArgoCD using Helm and Run Helm test
         uses: WyriHaximus/github-action-helm3@v3
         with:
-          exec: | 
-            bash ./bash/install-argocd.sh
+          exec: bash ./bash/install-argocd.sh
   
   exposing-cluster-and-argocd:
     runs-on: ubuntu-latest
@@ -48,11 +47,9 @@ jobs:
       - name: Install LoadBalancer Controller
         uses: WyriHaximus/github-action-helm3@v3
         with:
-         exec: | 
-           bash ./bash/install-lb-controller.sh
+         exec: bash ./bash/install-lb-controller.sh
         
       - name: Create Ingress Resource for ArgoCD
         working-directory: ./bash 
-        run: | 
-          bash ./bash/create-ingress-resource.sh
+        run: bash create-ingress-resource.sh
           
