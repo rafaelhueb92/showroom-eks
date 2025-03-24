@@ -39,8 +39,7 @@ jobs:
       - name: Clear AWS Credentials Cache
         run: rm -rf ~/.aws/cli/cache
 
-  # Configure Terraform Backend and State
-  terraform-backend:
+  set-terraform-backend:
     needs: configure-aws-credentials
     runs-on: ubuntu-latest
     steps:
@@ -51,20 +50,18 @@ jobs:
         run: bash ./../bash/backend-create.sh
         working-directory: ./terraform
 
-  # Terraform Init, Plan, and Apply in One Job
-  terraform:
-    needs: terraform-backend
+  deploy-terraform-infra:
+    needs: set-terraform-backend
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Set up Terraform
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v1
         with:
           terraform_version: 1.4.0
-          terraform_wrapper: false
-
+          
       - name: Terraform Init
         run: terraform init -reconfigure
         working-directory: ./terraform
@@ -105,6 +102,8 @@ jobs:
         with:
           name: terraform-outputs
           path: env.txt
+      
+      ## IF FAILS
       
       - name: Refresh State to Get Applied Resources (failure)
         if: failure()  
