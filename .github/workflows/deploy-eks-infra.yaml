@@ -12,7 +12,6 @@ env:
 
 jobs:
 
-  # Configure AWS Credentials
   deploy-eks-cluster:
     runs-on: ubuntu-latest
     permissions:
@@ -36,15 +35,9 @@ jobs:
       - name: Clear AWS Credentials Cache
         run: rm -rf ~/.aws/cli/cache
 
-      - name: Checkout Repository
-        uses: actions/checkout@v2
-
       - name: Configure Terraform backend (state.tf)
         run: bash ./../bash/backend-create.sh
         working-directory: ./terraform
-
-      - name: Checkout Repository
-        uses: actions/checkout@v3
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v1
@@ -65,16 +58,16 @@ jobs:
         run: terraform plan -out=tfplan
         working-directory: ./terraform
 
-      - name: Apply Changes 
-        if: env.DESTROY == 'false'
-        run: terraform apply -auto-approve
-        working-directory: ./terraform
-
       - name: Destroy Resources (if destroy flag is true)
         if: env.DESTROY == 'true'
         run: terraform destroy -auto-approve
         working-directory: ./terraform
         continue-on-error: true
+
+      - name: Apply Changes 
+        if: env.DESTROY == 'false'
+        run: terraform apply -auto-approve
+        working-directory: ./terraform
 
       - name: Set Terraform Outputs to GitHub Env
         if: env.DESTROY == 'false'
