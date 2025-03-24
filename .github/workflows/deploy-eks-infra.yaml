@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 env:
   ACTIONS_STEP_DEBUG: true
@@ -15,140 +12,92 @@ env:
 
 jobs:
 
-  configure-aws-credentials:
+  deploy-eks-cluster:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
-      - name: Check out code
+      - name: Checkout Repository
         uses: actions/checkout@v2
 
       - name: Set environment variables
         run: |
-          bash set-var-github-env.sh
+          bash set-var-github-env.sh ${{ github.repository }} ${{ secrets.AWS_ACCOUNT_ID }}
         working-directory: ./bash 
-      
-      - name: Configure AWS credentials
+
+      - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.TF_VAR_ROLE_ARN }}
-          aws-region: us-east-1 
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Clear AWS Credentials Cache
         run: rm -rf ~/.aws/cli/cache
 
-  configure-terraform-backend:
-    needs: configure-aws-credentials
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v2
-
-      - name: Configure state.tf file
+      - name: Configure Terraform backend (state.tf)
         run: bash ./../bash/backend-create.sh
         working-directory: ./terraform
 
-  init:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.4.0
+          
+      - name: Terraform Init
+        run: terraform init -reconfigure
+        working-directory: ./terraform
 
       - name: Check Destroy Flag
         id: check-destroy
         run: bash ./../bash/check-destroy.sh
-        working-directory: ./terraform 
-
-      - name: Terraform Init
-        run: terraform init -reconfigure
-        working-directory: ./terraform 
-
-  plan:
-    runs-on: ubuntu-latest
-    needs: init
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+        working-directory: ./terraform
 
       - name: Terraform Plan
         id: terraform-plan
         run: terraform plan -out=tfplan
-        working-directory: ./terraform 
+        working-directory: ./terraform
 
-  apply:
-    runs-on: ubuntu-latest
-    needs: plan
-    if: $DESTROY == 'false'
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - name: Destroy Resources (if destroy flag is true)
+        if: env.DESTROY == 'true'
+        run: terraform destroy -auto-approve
+        working-directory: ./terraform
+        continue-on-error: true
 
-      - name: Run Terraform apply
+      - name: Apply Changes 
+        if: env.DESTROY == 'false'
         run: terraform apply -auto-approve
-        working-directory: ./terraform 
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}  
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }} 
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }} 
-      
-      - name: Retrieve EKS Cluster Name from Terraform
+        working-directory: ./terraform
+
+      - name: Set Terraform Outputs to GitHub Env
+        if: env.DESTROY == 'false'
         run: |
           bash ./../bash/set-tf-var-github-env.sh "EKS_CLUSTER_NAME" "eks_cluster_name"
-        working-directory: ./terraform
-
-      - name: Retrieve Project Name from Terraform
-        run: |
           bash ./../bash/set-tf-var-github-env.sh "PROJECT_NAME" "project_name"
-        working-directory: ./terraform
-
-      - name: Retrieve ACM ARN from Terraform
-        run: |
           bash ./../bash/set-tf-var-github-env.sh "CERTIFICATE_ARN" "certificate_arn"
         working-directory: ./terraform
 
-      - name: Retrieve Secret argocd ARN from Terraform
-        run: |
-          bash ./../bash/set-tf-var-github-env.sh "ARGOCD_SECRET" "secret_arn"
+      - name: Upload Terraform Outputs as Artifacts
+        uses: actions/upload-artifact@v4
+        if: env.DESTROY == 'false'
+        with:
+          name: env-output
+          path: env.txt
+      
+      ## IF FAILS
+      
+      - name: Refresh State to Get Applied Resources (failure)
+        if: failure()  
+        run: terraform apply -refresh-only -auto-approve
         working-directory: ./terraform
 
-  destroy:
-    runs-on: ubuntu-latest
-    needs: plan
-    if: $DESTROY == 'true'
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Run Terraform destroy
-        run: terraform destroy -auto-approve
-        working-directory: ./terraform 
-        continue-on-error: true
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}  
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }} 
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }} 
-  
-  rollback:
-    runs-on: ubuntu-latest
-    needs: apply
-    if: failure()
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Refresh State to Get Applied Resources
-        run: terraform apply -refresh-only -auto-approve
-        working-directory: ./terraform 
-
-      - name: List Changed Resources
+      - name: List Changed Resources (failure)
+        if: failure() 
         id: list-resources
-        run: |
-          terraform state list > changed_resources.txt
-          cat changed_resources.txt
-        working-directory: ./terraform 
+        run: bash ./../bash/list-changed-resources.sh
+        working-directory: ./terraform
 
-      - name: Destroy Only Changed Resources
-        run: |
-          while read resource; do
-            echo "Destroying $resource"
-            terraform destroy -auto-approve -target="$resource"
-          done < changed_resources.txt
+      - name: Destroy Only Changed Resources (failure)
+        if: failure() 
+        run: bash ./../bash/destroy-changed-resources.sh
         working-directory: ./terraform

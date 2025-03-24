@@ -9,7 +9,3 @@ output "project_name" {
 output "certificate_arn" {
   value = module.acm.certificate_arn
 }
-
-output "secret_arn" {
-  value = module.secrets.secret_arn
-}

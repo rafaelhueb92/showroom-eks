@@ -9,10 +9,10 @@ metadata:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
-    alb.ingress.kubernetes.io/certificate-arn: $CERTIFICATE_ARN
+    alb.ingress.kubernetes.io/certificate-arn: $1
 spec:
   rules:
-  - host: argocd.$PROJECT_NAME.com
+  - host: argocd.$2.com
     http:
       paths:
       - path: /

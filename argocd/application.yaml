@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app
+  namespace: argocd 
+spec:
+  project: showroom-eks-project
+  source:
+    repoURL: "https://github.com/rafaelhueb92/showroom-eks-manifests.git"
+    targetRevision: main
+    path: manifests  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev
+  syncPolicy:
+    automated:
+      prune: true   
+      selfHeal: true 
+    syncOptions:
+      - CreateNamespace=true 

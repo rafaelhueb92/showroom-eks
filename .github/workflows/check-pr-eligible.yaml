@@ -1,0 +1,63 @@
+name: Terraform Deploy Infrastructure - Check if The PR is Eligible
+
+on:
+  pull_request:
+    branches:
+      - main
+
+env:
+  ACTIONS_STEP_DEBUG: true
+  AWS_DEBUG: true
+  AWS_REGION: us-east-1
+
+jobs:
+
+  check-pr-terraform:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set environment variables
+        run: |
+          bash set-var-github-env.sh ${{ github.repository }} ${{ secrets.AWS_ACCOUNT_ID }}
+        working-directory: ./bash 
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.TF_VAR_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Clear AWS Credentials Cache
+        run: rm -rf ~/.aws/cli/cache
+
+      - name: Configure Terraform backend (state.tf)
+        run: bash ./../bash/backend-create.sh
+        working-directory: ./terraform
+
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.4.0
+          
+      - name: Terraform Init
+        run: terraform init -reconfigure
+        working-directory: ./terraform
+
+      - name: Check Destroy Flag
+        id: check-destroy
+        run: bash ./../bash/check-destroy.sh
+        working-directory: ./terraform
+
+      - name: Terraform Plan
+        id: terraform-plan
+        if: steps.check-destroy.outputs.DESTROY == 'false'
+        run: terraform plan -out=tfplan
+        working-directory: ./terraform
