@@ -79,7 +79,7 @@ jobs:
         working-directory: ./terraform
 
       - name: Upload Terraform Outputs as Artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         if: env.DESTROY == 'false'
         with:
           name: terraform-outputs
