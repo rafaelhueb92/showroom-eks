@@ -103,6 +103,7 @@ jobs:
 
   install-eks-resources:
     runs-on: ubuntu-latest
+    needs: deploy-eks-cluster
     permissions:
       id-token: write
       contents: read
