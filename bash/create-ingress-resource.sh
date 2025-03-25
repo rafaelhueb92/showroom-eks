@@ -24,4 +24,6 @@ spec:
               name: https
 EOF
 
+cat argocd-ingress.yaml 
+
 kubectl apply -f argocd-ingress.yaml 
