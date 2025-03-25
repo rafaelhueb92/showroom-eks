@@ -17,6 +17,7 @@ jobs:
         cluster_name: ${{ env.EKS_CLUSTER_NAME }}
         project_name: ${{ env.PROJECT_NAME }}
         certificate_arn: ${{ env.CERTIFICATE_ARN }}
+        destroy: ${{ env.DESTROY }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -102,6 +103,7 @@ jobs:
 
   install-eks-resources:
     runs-on: ubuntu-latest
+    if: needs.deploy-eks-cluster.outputs.destroy == 'false' 
     needs: deploy-eks-cluster
     permissions:
       id-token: write
@@ -131,7 +133,7 @@ jobs:
           path: output.txt
 
       - name: Update kube config
-        run: aws eks update-kubeconfig --name ${{ needs.set-output.outputs.cluster_name }} --region $AWS_REGION
+        run: aws eks update-kubeconfig --name ${{ needs.deploy-eks-cluster.outputs.cluster_name }} --region $AWS_REGION
         
       - name: Add Helm repositories
         uses: WyriHaximus/github-action-helm3@v3
@@ -148,18 +150,18 @@ jobs:
       - name: Install ArgoCD using Helm and Run Helm test
         uses: WyriHaximus/github-action-helm3@v3
         with:
-          exec: bash ./bash/install-argocd.sh ${{ needs.set-output.outputs.certificate_arn }}
+          exec: bash ./bash/install-argocd.sh ${{ needs.deploy-eks-cluster.outputs.certificate_arn }}
 
       - name: Install LoadBalancer Controller
         uses: WyriHaximus/github-action-helm3@v3
         with:
-         exec: bash ./bash/install-lb-controller.sh ${{ needs.set-output.outputs.cluster_name }}
+         exec: bash ./bash/install-lb-controller.sh ${{ needs.deploy-eks-cluster.outputs.cluster_name }}
         
       - name: Create Ingress Resource for ArgoCD
         working-directory: ./bash 
         run: bash create-ingress-resource.sh \
-             ${{ needs.set-output.outputs.certificate_arn }} \ 
-             ${{ needs.set-output.outputs.project_name }}
+             ${{ needs.deploy-eks-cluster.outputs.certificate_arn }} \ 
+             ${{ needs.deploy-eks-cluster.outputs.project_name }}
 
       - name: Create Argocd Project and Application
         working-directory: ./argocd
