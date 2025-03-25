@@ -17,7 +17,6 @@ jobs:
         cluster_name: ${{ env.EKS_CLUSTER_NAME }}
         project_name: ${{ env.PROJECT_NAME }}
         certificate_arn: ${{ env.CERTIFICATE_ARN }}
-        role_arn: ${{ env.TF_VAR_ROLE_ARN }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -119,7 +118,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ needs.set-output.outputs.role_arn }}
+          role-to-assume: ${{ env.TF_VAR_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Clear AWS Credentials Cache
