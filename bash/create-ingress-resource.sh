@@ -1,3 +1,5 @@
+HOST_ARGO="$(echo -e "${2}" | tr -d '[:space:]')"
+
 cat <<EOF > argocd-ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -12,7 +14,7 @@ metadata:
     alb.ingress.kubernetes.io/certificate-arn: $1
 spec:
   rules:
-  - host: argocd.$2.com
+  - host: argocd.$HOST_ARGO.com
     http:
       paths:
       - path: /
