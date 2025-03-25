@@ -69,7 +69,7 @@ destination:
 To access your EKS cluster, update your kubeconfig file using:
 
 ```sh
-aws eks update-kubeconfig --region your-region --name your-cluster-name
+aws eks update-kubeconfig --region your-region --name your-cluster-name --profile selected-profile (Optional)
 ```
 
 This command configures `kubectl` to communicate with your EKS cluster.
