@@ -119,6 +119,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ needs.set-output.outputs.role_arn }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Clear AWS Credentials Cache
         run: rm -rf ~/.aws/cli/cache
